@@ -1,7 +1,7 @@
 package main
 
 import (
-	"aoc2015/day5"
+	"aoc2015/day6"
 	"fmt"
 )
 
@@ -14,6 +14,8 @@ func main() {
 	//day3.Star1()
 	//day3.Star2()
 	//day4.Main()
-	day5.Star1()
-	day5.Star2()
+	//day5.Star1()
+	//day5.Star2()
+	day6.Star1()
+	day6.Star2()
 }
