@@ -14,7 +14,7 @@ func calc(s int, e int, done chan int, index int, results []int, mu *sync.Mutex)
 		input := "yzbqklnj" + strconv.Itoa(x)
 		data := []byte(input)
 		sum := md5.Sum(data)
-		if sum[0] == 0 && sum[1] == 0 && sum[2] == 0 && sum[3] == 0 {
+		if sum[0] == 0 && sum[1] == 0 && sum[2] == 0 {
 			mu.Lock()
 			results[index] = x
 			mu.Unlock()
