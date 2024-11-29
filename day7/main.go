@@ -3,166 +3,112 @@ package day7
 import (
 	"aoc2015/stream"
 	"fmt"
-	"log"
-	"os"
-	"regexp"
 	"strconv"
 	"strings"
 )
 
-type Variable struct {
-	name  string
-	value int
+type Wire struct {
+	Name     string
+	Value    uint16
+	Op       string
+	Inputs   []string
+	Computed bool
 }
 
-type Memory []Variable
+type Circuit map[string]*Wire
 
-func (memory *Memory) find(name string) int {
-	for i, item := range *memory {
-		if item.name == name {
-			return i
-		}
+func parseInstruction(instruction string) *Wire {
+	parts := strings.Split(instruction, " -> ")
+	wire := &Wire{Name: parts[1]}
+
+	inputs := strings.Split(parts[0], " ")
+	if len(inputs) == 1 {
+		wire.Op = "ASSIGN"
+		wire.Inputs = inputs
+	} else if len(inputs) == 2 {
+		wire.Op = inputs[0]
+		wire.Inputs = inputs[1:]
+	} else {
+		wire.Op = inputs[1]
+		wire.Inputs = []string{inputs[0], inputs[2]}
 	}
-	return -1
+
+	return wire
 }
 
-/*
-	Je potreba dodat graf pro pomene a pak dopocitat hodnoty
+func (c Circuit) evaluate(wireName string) uint16 {
+	wire, exists := c[wireName]
+	if !exists {
+		val, err := strconv.Atoi(wireName)
+		if err != nil {
+			panic(err)
+		}
+		return uint16(val)
+	}
 
-	vrchol je  A a od nej udelat
+	if wire.Computed {
+		return wire.Value
+	}
 
-	viz.: a <- lx
-		   lx <- ? operace ?
-*/
+	wire.Computed = true
+	wire.Value = 0
+
+	var result uint16
+	switch wire.Op {
+	case "ASSIGN":
+		if val, err := strconv.Atoi(wire.Inputs[0]); err == nil {
+			result = uint16(val)
+		} else {
+			result = c.evaluate(wire.Inputs[0])
+		}
+	case "AND":
+		result = c.evaluate(wire.Inputs[0]) & c.evaluate(wire.Inputs[1])
+	case "OR":
+		result = c.evaluate(wire.Inputs[0]) | c.evaluate(wire.Inputs[1])
+	case "LSHIFT":
+		shift, _ := strconv.Atoi(wire.Inputs[1])
+		result = c.evaluate(wire.Inputs[0]) << uint(shift)
+	case "RSHIFT":
+		shift, _ := strconv.Atoi(wire.Inputs[1])
+		result = c.evaluate(wire.Inputs[0]) >> uint(shift)
+	case "NOT":
+		result = ^c.evaluate(wire.Inputs[0])
+	default:
+		panic(fmt.Sprintf("Unknown operation: %s", wire.Op))
+	}
+
+	wire.Value = result
+	return result
+}
 
 func Star1() {
 	fmt.Println("day 7 - star 1")
-	data := stream.ReadBytes("day7/test.txt")
+	data := stream.ReadBytes("day7/input.txt")
 	lines := stream.BtoSa(data)
+	circuit := make(Circuit)
 
-	rAnd := regexp.MustCompile("AND")
-	rOr := regexp.MustCompile("OR")
-	rNot := regexp.MustCompile("NOT")
-	rLeft := regexp.MustCompile(`LSHIFT`)
-	rRight := regexp.MustCompile(`RSHIFT`)
-
-	var memory Memory
-
-	for _, l := range lines {
-		items := strings.Split(l, " ")
-		line := string(l)
-
-		and := rAnd.MatchString(line)
-		or := rOr.MatchString(line)
-		not := rNot.MatchString(line)
-		left := rLeft.MatchString(line)
-		right := rRight.MatchString(line)
-
-		if !not && !and && !or && !left && !right && len(items) == 3 {
-			value, err := strconv.Atoi(items[0])
-			if err != nil {
-				index := memory.find(items[0])
-				if index > -1 {
-					value = memory[index].value
-				} else {
-					value = 0
-				}
-			}
-
-			tmp := Variable{name: items[2], value: value}
-			memory = append(memory, tmp)
-		}
-
-		if not {
-			src := items[1]
-			dst := items[3]
-
-			iSRC := memory.find(src)
-			iDST := memory.find(dst)
-			value := 65535
-			if iSRC > -1 {
-				value = 65535 - memory[iSRC].value
-			}
-
-			if iDST > -1 {
-				memory[iDST].value = value
-			} else {
-
-				tmp := Variable{name: dst, value: value}
-				memory = append(memory, tmp)
-			}
-
-		}
-
-		if and || or {
-			iSRC1 := memory.find(items[0])
-			iSRC2 := memory.find(items[2])
-			dst := items[4]
-			iDST := memory.find(dst)
-
-			src1 := 0
-			src2 := 0
-			if iSRC1 > -1 && iSRC2 > -1 {
-				src1 = memory[iSRC1].value
-				src2 = memory[iSRC2].value
-			}
-
-			value := 0
-			if and {
-				value = src1 & src2
-			} else {
-				value = src1 | src2
-			}
-
-			if iDST > -1 {
-				memory[iDST].value = value
-			} else {
-
-				tmp := Variable{name: dst, value: value}
-				memory = append(memory, tmp)
-			}
-
-		}
-
-		if left || right {
-			iSRC := memory.find(items[0])
-			size, err := strconv.Atoi(items[2])
-			if err != nil {
-				log.Fatal(err)
-				os.Exit(1)
-			}
-
-			dst := items[4]
-			iDST := memory.find(dst)
-			src := 0
-			if iSRC > -1 {
-				src = memory[iSRC].value
-			}
-			value := 0
-			if left {
-				value = src << size
-			} else {
-				value = src >> size
-			}
-
-			if iDST > -1 {
-				memory[iDST].value = value
-			} else {
-
-				tmp := Variable{name: dst, value: value}
-				memory = append(memory, tmp)
-			}
-
-		}
-
+	for _, instruction := range lines {
+		wire := parseInstruction(instruction)
+		circuit[wire.Name] = wire
 	}
 
-	for _, i := range memory {
-		fmt.Printf("%s: %d\n", i.name, i.value)
-	}
+	fmt.Println("Value of wire a:", circuit.evaluate("a"))
 
 }
 
 func Star2() {
 	fmt.Println("day 7 - star 2")
+
+	data := stream.ReadBytes("day7/input.txt")
+	lines := stream.BtoSa(data)
+	circuit := make(Circuit)
+
+	for _, instruction := range lines {
+		wire := parseInstruction(instruction)
+		circuit[wire.Name] = wire
+	}
+
+	circuit["b"].Inputs[0] = "16076"
+	a2 := circuit.evaluate("a")
+	fmt.Println("Value of new wire a:", a2)
 }
