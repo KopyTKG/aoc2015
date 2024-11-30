@@ -12,13 +12,15 @@ func Star1() {
 	lines := stream.BtoSa(data)
 
 	rSlash := regexp.MustCompile(`\\\\`)
-	rHex := regexp.MustCompile(`\\x`)
+	rHex := regexp.MustCompile(`\\x([a-z]|[0-9])([a-z]|[0-9])`)
 	rQuote := regexp.MustCompile(`\\"`)
 	totalChar := 0
 	totalString := 0
 	for _, i := range lines {
 		line := []byte(i)
 		slash := len(rSlash.FindAll(line, -1))
+
+		// find the element and replace it with its char val
 		hex := len(rHex.FindAll(line, -1)) * 3
 		quote := len(rQuote.FindAll(line, -1))
 		charL := len(i)
